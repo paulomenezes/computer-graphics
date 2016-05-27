@@ -1,0 +1,14 @@
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\bin\Debug\ComputacaoGrafica.exe.config
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\bin\Debug\ComputacaoGrafica.exe
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\bin\Debug\ComputacaoGrafica.pdb
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\MainWindow.g.cs
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\App.g.cs
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica_MarkupCompile.cache
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica_MarkupCompile.lref
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\MainWindow.baml
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.g.resources
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.Properties.Resources.resources
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.csproj.GenerateResource.Cache
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.exe
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.pdb
+C:\Users\phgm\Documents\UFRPE\ComputacaoGrafica\ComputacaoGrafica\obj\Debug\ComputacaoGrafica.csprojResolveAssemblyReference.cache
