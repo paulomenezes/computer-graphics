@@ -38,14 +38,14 @@ namespace ComputacaoGrafica
 
     class Luz
     {
-        public Color Iamb = Color.FromRgb(255, 128, 128);
-        public Color Il = Color.FromRgb(255, 128, 128);
-        public double Ka = 0.4;
+        public Color Iamb = Color.FromRgb(255, 0, 0);
+        public Color Il = Color.FromRgb(255, 0, 0);
+        public double Ka = 0.5;
         public double Ks = 0.4;
         public int n = 5;
-        public Point Kd = new Point(0.5, 0.5, 0.5);
-        public Point Od = new Point(0.5, 0.5, 0.5);
-        public Point Pl = new Point(200, 0, 0);
+        public Point Kd = new Point(0.5, 0, 0);
+        public Point Od = new Point(0.5, 0, 0);
+        public Point Pl = new Point(0, 100, 200);
     }
 
     /// <summary>
@@ -70,7 +70,15 @@ namespace ComputacaoGrafica
 
             InitializeComponent();
 
-            String file = File.ReadAllText("calice2.byu");
+            for (int i = 0; i < zBuffer.GetLength(0); i++)
+            {
+                for (int j = 0; j < zBuffer.GetLength(1); j++)
+                {
+                    zBuffer[i, j] = int.MinValue;
+                }
+            }
+
+            String file = File.ReadAllText("vaso.byu");
 
             List<double[]> vertices = new List<double[]>();
             List<int[]> triangulos = new List<int[]>();
@@ -102,6 +110,7 @@ namespace ComputacaoGrafica
             }
 
             List<Point> trianguloNormal = new List<Point>();
+            List<double[,]> trianguloBarycentric = new List<double[,]>();
 
             for (var i = 0; i < triangulos.Count; i++)
             {
@@ -110,8 +119,7 @@ namespace ComputacaoGrafica
                     { vertices[triangulos[i][1] - 1][0], vertices[triangulos[i][1] - 1][1], vertices[triangulos[i][1] - 1][2] },
                     { vertices[triangulos[i][2] - 1][0], vertices[triangulos[i][2] - 1][1], vertices[triangulos[i][2] - 1][2] }
                 };
-
-                List<Point> verticesVista = new List<Point>();
+                
                 List<Point> coordenadasVista = new List<Point>();
 
                 for (var j = 0; j < verticesTriangulo.GetLength(0); j++)
@@ -122,82 +130,19 @@ namespace ComputacaoGrafica
                     double Ys = (camera.d / camera.hY) * (vista[1, 0] / vista[2, 0]);
 
                     coordenadasVista.Add(new Point(Xs, Ys, camera.d));
-                    
-                    double xi = (((Xs + 1) / 2) * width);
-                    double xj = (height - ((Ys + 1) / 2) * height);
-
-                    verticesVista.Add(new Point(xi, xj, 0));
                 }
-                
-                if (verticesVista[0].y > verticesVista[1].y) verticesVista = swap(verticesVista, 0, 1);
-                if (verticesVista[0].y > verticesVista[2].y) verticesVista = swap(verticesVista, 0, 2);
-                if (verticesVista[1].y > verticesVista[2].y) verticesVista = swap(verticesVista, 1, 2);
 
-                /*Point V = maths.subtracaoPontos(coordenadasVista[1], coordenadasVista[0]);
+                Point V = maths.subtracaoPontos(coordenadasVista[1], coordenadasVista[0]);
                 Point W = maths.subtracaoPontos(coordenadasVista[2], coordenadasVista[0]);
-                Point normalTriangulo = maths.produtoVetorial(V, W);
+                Point normalTriangulo = maths.normalizar(maths.produtoVetorial(V, W));
 
-                Point N = maths.normalizar(normalTriangulo);
-                trianguloNormal.Add(N);
-
-                Point L = maths.normalizar(maths.subtracaoPontos(new Point(0, 0, 0), luz.Pl));
-
-                double NxL = maths.produtoEscalar(N, L);
-                Point R = new Point(
-                    (2 * NxL * N.x) - L.x, 
-                    (2 * NxL * N.y) - L.y, 
-                    (2 * NxL * N.z) - L.z);
-
-                double RxV = maths.produtoEscalar(R, V);
-
-                Color Ia = Color.FromRgb(
-                    (byte)(luz.Ka * luz.Iamb.R),
-                    (byte)(luz.Ka * luz.Iamb.G),
-                    (byte)(luz.Ka * luz.Iamb.B));
-
-                Color Id = Color.FromRgb(
-                    (byte)(NxL * luz.Kd.x * luz.Od.x * luz.Il.R),
-                    (byte)(NxL * luz.Kd.y * luz.Od.y * luz.Il.G),
-                    (byte)(NxL * luz.Kd.z * luz.Od.z * luz.Il.B));
-
-                Color Is = Color.FromRgb(
-                    (byte)(Math.Pow(RxV, luz.n) * luz.Ks * luz.Il.R),
-                    (byte)(Math.Pow(RxV, luz.n) * luz.Ks * luz.Il.G),
-                    (byte)(Math.Pow(RxV, luz.n) * luz.Ks * luz.Il.B));
-
-                Color I = Color.FromRgb(
-                    (byte)(Ia.R + Id.R + Is.R),
-                    (byte)(Ia.G + Id.G + Is.B),
-                    (byte)(Ia.B + Id.B + Is.B));
-                */
-
-                Color I = luz.Iamb;
-
-                if ((int)verticesVista[1].y == (int)verticesVista[2].y)
-                {
-                    drawTopBottom(verticesVista, 0, 1, 2, I);
-                }
-                else if ((int)verticesVista[0].y == (int)verticesVista[1].y)
-                {
-                    drawBottomTop(verticesVista, 0, 1, 2, I);
-                }
-                else
-                {
-                    var v4x = (verticesVista[0].x + ((verticesVista[1].y - verticesVista[0].y) / (verticesVista[2].y - verticesVista[0].y)) * (verticesVista[2].x - verticesVista[0].x));
-                    verticesVista.Add(new Point(v4x, verticesVista[1].y, 0));
-                    
-                    drawTopBottom(verticesVista, 0, 1, 3, I);
-                    drawBottomTop(verticesVista, 1, 3, 2, I);
-                }
-
-                //for (int j = 0; j < verticesVista.Count; j++)
-                //{
-                //    AddPixel(verticesVista[j].x, verticesVista[j].y, Colors.White);
-                //}
+                trianguloNormal.Add(normalTriangulo);
             }
 
             List<Point> verticeNormal = new List<Point>();
-            for (int i = 0; i < trianguloNormal.Count - 3; i += 3)
+            Dictionary<int, Point> barycentric = new Dictionary<int, Point>();
+
+            for (int i = 0; i < trianguloNormal.Count - 2; i++)
             {
                 Point p = new Point(0, 0, 0);
                 for (int j = 0; j < 3; j++)
@@ -208,7 +153,100 @@ namespace ComputacaoGrafica
                 }
 
                 verticeNormal.Add(maths.normalizar(p));
+                
+                Point p0 = new Point(
+                    (trianguloNormal[i].x + trianguloNormal[i + 1].x + trianguloNormal[i + 2].x) / 3,
+                    (trianguloNormal[i].y + trianguloNormal[i + 1].y + trianguloNormal[i + 2].y) / 3,
+                    (trianguloNormal[i].z + trianguloNormal[i + 1].z + trianguloNormal[i + 2].z) / 3);
+
+                barycentric.Add(i, p0);
             }
+
+            var sorted = barycentric.OrderBy(x => x.Value.z).ToDictionary(pair => pair.Key, pair => pair.Value);
+                        
+            for (int i = 0; i < triangulos.Count; i++)
+            {
+                double[,] verticesTriangulo = new double[3, 3] {
+                    { vertices[triangulos[i][0] - 1][0], vertices[triangulos[i][0] - 1][1], vertices[triangulos[i][0] - 1][2] },
+                    { vertices[triangulos[i][1] - 1][0], vertices[triangulos[i][1] - 1][1], vertices[triangulos[i][1] - 1][2] },
+                    { vertices[triangulos[i][2] - 1][0], vertices[triangulos[i][2] - 1][1], vertices[triangulos[i][2] - 1][2] }
+                };
+
+                List<Point> verticesVista = new List<Point>();
+
+                for (var j = 0; j < verticesTriangulo.GetLength(0); j++)
+                {
+                    double[,] vista = coordenadaVista(new Point(verticesTriangulo[j, 0], verticesTriangulo[j, 1], verticesTriangulo[j, 2]));
+
+                    double Xs = (camera.d / camera.hX) * (vista[0, 0] / vista[2, 0]);
+                    double Ys = (camera.d / camera.hY) * (vista[1, 0] / vista[2, 0]);
+                    
+                    double xi = (((Xs + 1) / 2) * width);
+                    double xj = (height - ((Ys + 1) / 2) * height);
+
+                    verticesVista.Add(new Point(xi, xj, 0));
+                }
+
+                if (verticesVista[0].y > verticesVista[1].y) verticesVista = swap(verticesVista, 0, 1);
+                if (verticesVista[0].y > verticesVista[2].y) verticesVista = swap(verticesVista, 0, 2);
+                if (verticesVista[1].y > verticesVista[2].y) verticesVista = swap(verticesVista, 1, 2);
+
+                Point baricentro = new Point(
+                    (verticesVista[0].x + verticesVista[1].x + verticesVista[2].x) / 3,
+                    (verticesVista[0].y + verticesVista[1].y + verticesVista[2].y) / 3,
+                    (verticesVista[0].z + verticesVista[1].z + verticesVista[2].z) / 3);
+
+                Point N = maths.normalizar(baricentro);
+                Point L = maths.subtracaoPontos(luz.Pl, barycentric.ContainsKey(i) ? barycentric[i] : baricentro);
+
+                Color Ia = Color.FromRgb(
+                    (byte)(luz.Ka * luz.Iamb.R),
+                    (byte)(luz.Ka * luz.Iamb.G),
+                    (byte)(luz.Ka * luz.Iamb.B));
+
+                double NxL = maths.produtoEscalar(N, L);
+                
+                Color Id = Color.FromRgb(
+                    (byte)(NxL * luz.Kd.x * luz.Od.x * luz.Il.R),
+                    (byte)(NxL * luz.Kd.y * luz.Od.y * luz.Il.G),
+                    (byte)(NxL * luz.Kd.z * luz.Od.z * luz.Il.B));
+
+                Color I = Color.FromRgb(
+                    (byte)(Ia.R + Id.R), 
+                    (byte)(Ia.G + Id.G), 
+                    (byte)(Ia.B + Id.B));
+                
+                int z = barycentric.ContainsKey(i) ? (int)barycentric[i].z : (int)baricentro.z;
+                
+                if ((int)verticesVista[1].y == (int)verticesVista[2].y)
+                {
+                    drawTopBottom(verticesVista, 0, 1, 2, I, z);
+                }
+                else if ((int)verticesVista[0].y == (int)verticesVista[1].y)
+                {
+                    drawBottomTop(verticesVista, 0, 1, 2, I, z);
+                }
+                else
+                {
+                    var v4x = (verticesVista[0].x + ((verticesVista[1].y - verticesVista[0].y) / (verticesVista[2].y - verticesVista[0].y)) * (verticesVista[2].x - verticesVista[0].x));
+                    verticesVista.Add(new Point(v4x, verticesVista[1].y, 0));
+
+                    drawTopBottom(verticesVista, 0, 1, 3, I, z);
+                    drawBottomTop(verticesVista, 1, 3, 2, I, z);
+                }
+            }
+
+            double[,] vistaCamera = coordenadaVista(luz.Pl);
+            double XsCamera = (camera.d / camera.hX) * (vistaCamera[0, 0] / vistaCamera[2, 0]);
+            double YsCamera = (camera.d / camera.hY) * (vistaCamera[1, 0] / vistaCamera[2, 0]);
+            double xiCamera = (((XsCamera + 1) / 2) * width);
+            double xjCamera = (height - ((YsCamera + 1) / 2) * height);
+
+            AddPixel(xiCamera - 1, xjCamera, Colors.Blue, 99);
+            AddPixel(xiCamera + 1, xjCamera, Colors.Blue, 99);
+            AddPixel(xiCamera, xjCamera - 1, Colors.Blue, 99);
+            AddPixel(xiCamera, xjCamera + 1, Colors.Blue, 99);
+            AddPixel(xiCamera, xjCamera, Colors.Blue, 99);
 
             // Copy the data into a one-dimensional array.
             byte[] pixels1d = new byte[height * width * 4];
@@ -240,12 +278,22 @@ namespace ComputacaoGrafica
             image.Source = wbitmap;
         }
 
-        private void drawTopBottom (List<Point> triV, int idx1, int idx2, int idx3, Color color)
+        double ComputeNDotL(Point vertex, Point normal, Point lightPosition)
+        {
+            var lightDirection = maths.subtracaoPontos(lightPosition, vertex);
+
+            normal = maths.normalizar(normal);
+            lightDirection = maths.normalizar(lightDirection);
+
+            return Math.Max(0, maths.produtoEscalar(normal, lightDirection));
+        }
+
+        private void drawTopBottom (List<Point> triV, int idx1, int idx2, int idx3, Color color, int z)
         {
             Point v1 = triV[idx1];
             Point v2 = triV[idx2];
             Point v3 = triV[idx3];
-
+            
             double invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
             double invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
 
@@ -262,14 +310,14 @@ namespace ComputacaoGrafica
 
                 for (int k = (int)xMin; k < xMax; k++)
                 {
-                    AddPixel(k, scanlineY, color);
+                    AddPixel(k, scanlineY, color, z);
                 }
                 x1 += invslope1;
                 x2 += invslope2;
             }
         }
 
-        private void drawBottomTop(List<Point> triV, int idx1, int idx2, int idx3, Color color)
+        private void drawBottomTop(List<Point> triV, int idx1, int idx2, int idx3, Color color, int z)
         {
             Point v1 = triV[idx1];
             Point v2 = triV[idx2];
@@ -287,7 +335,7 @@ namespace ComputacaoGrafica
                 var xMax = x1 > x2 ? x1 : x2;
                 for (int k = (int)xMin; k < xMax; k++)
                 {
-                    AddPixel(k, j, color);
+                    AddPixel(k, j, color, z);
                 }
                 x1 -= invslope1;
                 x2 -= invslope2;
@@ -337,18 +385,18 @@ namespace ComputacaoGrafica
                 { subPonto.z }
             });
         }
-
-        private void AddPixel(double x, double y)
+        
+        private void AddPixel(double x, double y, Color color, int z)
         {
-            AddPixel(x, y, Colors.Red);
-        }
+            if (zBuffer[(int)x, (int)y] < z)
+            {
+                pixels[(int)y, (int)x, 0] = color.B; 
+                pixels[(int)y, (int)x, 1] = color.G; 
+                pixels[(int)y, (int)x, 2] = color.R; 
+                pixels[(int)y, (int)x, 3] = 255;
+            }
 
-        private void AddPixel(double x, double y, Color color)
-        {
-            pixels[(int)y, (int)x, 0] = color.B; // (byte)(luz.Ka * luz.Iamb.B);
-            pixels[(int)y, (int)x, 1] = color.G; // (byte)(luz.Ka * luz.Iamb.G);
-            pixels[(int)y, (int)x, 2] = color.R; // (byte)(luz.Ka * luz.Iamb.R);
-            pixels[(int)y, (int)x, 3] = 255;
+            zBuffer[(int)x, (int)y] = z;
         }
     }
 }
