@@ -40,12 +40,36 @@ namespace ComputacaoGrafica
     {
         public Color Iamb = Color.FromRgb(255, 0, 0);
         public Color Il = Color.FromRgb(255, 0, 0);
-        public double Ka = 0.5;
-        public double Ks = 0.4;
+        public double Ka = 0.5f;
+        public double Ks = 0.6f;
         public int n = 5;
-        public Point Kd = new Point(0.5, 0, 0);
-        public Point Od = new Point(0.5, 0, 0);
-        public Point Pl = new Point(0, 100, 200);
+        public Point Kd = new Point(0.5f, 0, 0);
+        public Point Od = new Point(0.5f, 0, 0);
+        public Point Pl = new Point(-100, 0, -500);
+    }
+
+    struct C
+    {
+        public int R, G, B;
+
+        public C(int R, int G, int B)
+        {
+            this.R = R;
+            this.G = G;
+            this.B = B;
+        }
+    }
+
+    class Triangle
+    {
+        public List<Point> vertices;
+        public List<Point> coordenadaVista;
+        public List<Point> normaisVertices;
+        public List<Point> coordenadaTela;
+        public Point normal;
+        public Point baricentro;
+
+        public int[] verticesIndex;
     }
 
     /// <summary>
@@ -58,30 +82,22 @@ namespace ComputacaoGrafica
 
         Luz luz = new Luz();
 
+        int WIDTH = 500;
+        int HEIGHT = 500;
+
         WriteableBitmap wbitmap = new WriteableBitmap(500, 500, 96, 96, PixelFormats.Bgra32, null);
         byte[,,] pixels = new byte[500, 500, 4];
 
         double[,] zBuffer = new double[500, 500];
 
-        public MainWindow()
+        List<double[]> vertices = new List<double[]>();
+        List<int[]> triangulos = new List<int[]>();
+
+        List<Triangle> triangles = new List<Triangle>();
+        
+        private void LoadFile(string name)
         {
-            int width = 500;
-            int height = 500;
-
-            InitializeComponent();
-
-            for (int i = 0; i < zBuffer.GetLength(0); i++)
-            {
-                for (int j = 0; j < zBuffer.GetLength(1); j++)
-                {
-                    zBuffer[i, j] = int.MinValue;
-                }
-            }
-
-            String file = File.ReadAllText("vaso.byu");
-
-            List<double[]> vertices = new List<double[]>();
-            List<int[]> triangulos = new List<int[]>();
+            String file = File.ReadAllText(name + ".byu");
 
             string[] data = file.Split(new string[2] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
             var vLen = data[0].Split(' ')[0];
@@ -108,152 +124,16 @@ namespace ComputacaoGrafica
 
                 triangulos.Add(nArr);
             }
-
-            List<Point> trianguloNormal = new List<Point>();
-            List<double[,]> trianguloBarycentric = new List<double[,]>();
-
-            for (var i = 0; i < triangulos.Count; i++)
-            {
-                double[,] verticesTriangulo = new double[3, 3] {
-                    { vertices[triangulos[i][0] - 1][0], vertices[triangulos[i][0] - 1][1], vertices[triangulos[i][0] - 1][2] },
-                    { vertices[triangulos[i][1] - 1][0], vertices[triangulos[i][1] - 1][1], vertices[triangulos[i][1] - 1][2] },
-                    { vertices[triangulos[i][2] - 1][0], vertices[triangulos[i][2] - 1][1], vertices[triangulos[i][2] - 1][2] }
-                };
-                
-                List<Point> coordenadasVista = new List<Point>();
-
-                for (var j = 0; j < verticesTriangulo.GetLength(0); j++)
-                {
-                    double[,] vista = coordenadaVista(new Point(verticesTriangulo[j, 0], verticesTriangulo[j, 1], verticesTriangulo[j, 2]));
-                    
-                    double Xs = (camera.d / camera.hX) * (vista[0, 0] / vista[2, 0]);
-                    double Ys = (camera.d / camera.hY) * (vista[1, 0] / vista[2, 0]);
-
-                    coordenadasVista.Add(new Point(Xs, Ys, camera.d));
-                }
-
-                Point V = maths.subtracaoPontos(coordenadasVista[1], coordenadasVista[0]);
-                Point W = maths.subtracaoPontos(coordenadasVista[2], coordenadasVista[0]);
-                Point normalTriangulo = maths.normalizar(maths.produtoVetorial(V, W));
-
-                trianguloNormal.Add(normalTriangulo);
-            }
-
-            List<Point> verticeNormal = new List<Point>();
-            Dictionary<int, Point> barycentric = new Dictionary<int, Point>();
-
-            for (int i = 0; i < trianguloNormal.Count - 2; i++)
-            {
-                Point p = new Point(0, 0, 0);
-                for (int j = 0; j < 3; j++)
-                {
-                    p.x += trianguloNormal[i + j].x;
-                    p.y += trianguloNormal[i + j].y;
-                    p.z += trianguloNormal[i + j].z;
-                }
-
-                verticeNormal.Add(maths.normalizar(p));
-                
-                Point p0 = new Point(
-                    (trianguloNormal[i].x + trianguloNormal[i + 1].x + trianguloNormal[i + 2].x) / 3,
-                    (trianguloNormal[i].y + trianguloNormal[i + 1].y + trianguloNormal[i + 2].y) / 3,
-                    (trianguloNormal[i].z + trianguloNormal[i + 1].z + trianguloNormal[i + 2].z) / 3);
-
-                barycentric.Add(i, p0);
-            }
-
-            var sorted = barycentric.OrderBy(x => x.Value.z).ToDictionary(pair => pair.Key, pair => pair.Value);
-                        
-            for (int i = 0; i < triangulos.Count; i++)
-            {
-                double[,] verticesTriangulo = new double[3, 3] {
-                    { vertices[triangulos[i][0] - 1][0], vertices[triangulos[i][0] - 1][1], vertices[triangulos[i][0] - 1][2] },
-                    { vertices[triangulos[i][1] - 1][0], vertices[triangulos[i][1] - 1][1], vertices[triangulos[i][1] - 1][2] },
-                    { vertices[triangulos[i][2] - 1][0], vertices[triangulos[i][2] - 1][1], vertices[triangulos[i][2] - 1][2] }
-                };
-
-                List<Point> verticesVista = new List<Point>();
-
-                for (var j = 0; j < verticesTriangulo.GetLength(0); j++)
-                {
-                    double[,] vista = coordenadaVista(new Point(verticesTriangulo[j, 0], verticesTriangulo[j, 1], verticesTriangulo[j, 2]));
-
-                    double Xs = (camera.d / camera.hX) * (vista[0, 0] / vista[2, 0]);
-                    double Ys = (camera.d / camera.hY) * (vista[1, 0] / vista[2, 0]);
-                    
-                    double xi = (((Xs + 1) / 2) * width);
-                    double xj = (height - ((Ys + 1) / 2) * height);
-
-                    verticesVista.Add(new Point(xi, xj, 0));
-                }
-
-                if (verticesVista[0].y > verticesVista[1].y) verticesVista = swap(verticesVista, 0, 1);
-                if (verticesVista[0].y > verticesVista[2].y) verticesVista = swap(verticesVista, 0, 2);
-                if (verticesVista[1].y > verticesVista[2].y) verticesVista = swap(verticesVista, 1, 2);
-
-                Point baricentro = new Point(
-                    (verticesVista[0].x + verticesVista[1].x + verticesVista[2].x) / 3,
-                    (verticesVista[0].y + verticesVista[1].y + verticesVista[2].y) / 3,
-                    (verticesVista[0].z + verticesVista[1].z + verticesVista[2].z) / 3);
-
-                Point N = maths.normalizar(baricentro);
-                Point L = maths.subtracaoPontos(luz.Pl, barycentric.ContainsKey(i) ? barycentric[i] : baricentro);
-
-                Color Ia = Color.FromRgb(
-                    (byte)(luz.Ka * luz.Iamb.R),
-                    (byte)(luz.Ka * luz.Iamb.G),
-                    (byte)(luz.Ka * luz.Iamb.B));
-
-                double NxL = maths.produtoEscalar(N, L);
-                
-                Color Id = Color.FromRgb(
-                    (byte)(NxL * luz.Kd.x * luz.Od.x * luz.Il.R),
-                    (byte)(NxL * luz.Kd.y * luz.Od.y * luz.Il.G),
-                    (byte)(NxL * luz.Kd.z * luz.Od.z * luz.Il.B));
-
-                Color I = Color.FromRgb(
-                    (byte)(Ia.R + Id.R), 
-                    (byte)(Ia.G + Id.G), 
-                    (byte)(Ia.B + Id.B));
-                
-                int z = barycentric.ContainsKey(i) ? (int)barycentric[i].z : (int)baricentro.z;
-                
-                if ((int)verticesVista[1].y == (int)verticesVista[2].y)
-                {
-                    drawTopBottom(verticesVista, 0, 1, 2, I, z);
-                }
-                else if ((int)verticesVista[0].y == (int)verticesVista[1].y)
-                {
-                    drawBottomTop(verticesVista, 0, 1, 2, I, z);
-                }
-                else
-                {
-                    var v4x = (verticesVista[0].x + ((verticesVista[1].y - verticesVista[0].y) / (verticesVista[2].y - verticesVista[0].y)) * (verticesVista[2].x - verticesVista[0].x));
-                    verticesVista.Add(new Point(v4x, verticesVista[1].y, 0));
-
-                    drawTopBottom(verticesVista, 0, 1, 3, I, z);
-                    drawBottomTop(verticesVista, 1, 3, 2, I, z);
-                }
-            }
-
-            double[,] vistaCamera = coordenadaVista(luz.Pl);
-            double XsCamera = (camera.d / camera.hX) * (vistaCamera[0, 0] / vistaCamera[2, 0]);
-            double YsCamera = (camera.d / camera.hY) * (vistaCamera[1, 0] / vistaCamera[2, 0]);
-            double xiCamera = (((XsCamera + 1) / 2) * width);
-            double xjCamera = (height - ((YsCamera + 1) / 2) * height);
-
-            AddPixel(xiCamera - 1, xjCamera, Colors.Blue, 99);
-            AddPixel(xiCamera + 1, xjCamera, Colors.Blue, 99);
-            AddPixel(xiCamera, xjCamera - 1, Colors.Blue, 99);
-            AddPixel(xiCamera, xjCamera + 1, Colors.Blue, 99);
-            AddPixel(xiCamera, xjCamera, Colors.Blue, 99);
-
+        }
+        
+        private void DrawPixels()
+        {
             // Copy the data into a one-dimensional array.
-            byte[] pixels1d = new byte[height * width * 4];
+            byte[] pixels1d = new byte[HEIGHT * WIDTH * 4];
             int index = 0;
-            for (int row = 0; row < height; row++)
+            for (int row = 0; row < HEIGHT; row++)
             {
-                for (int col = 0; col < width; col++)
+                for (int col = 0; col < WIDTH; col++)
                 {
                     pixels[row, col, 3] = 255;
 
@@ -263,8 +143,8 @@ namespace ComputacaoGrafica
             }
 
             // Update writeable bitmap with the colorArray to the image.
-            Int32Rect rect = new Int32Rect(0, 0, width, height);
-            int stride = 4 * width;
+            Int32Rect rect = new Int32Rect(0, 0, WIDTH, HEIGHT);
+            int stride = 4 * WIDTH;
             wbitmap.WritePixels(rect, pixels1d, stride, 0);
 
             // Create an Image to display the bitmap.
@@ -278,68 +158,276 @@ namespace ComputacaoGrafica
             image.Source = wbitmap;
         }
 
-        double ComputeNDotL(Point vertex, Point normal, Point lightPosition)
+        public MainWindow()
         {
-            var lightDirection = maths.subtracaoPontos(lightPosition, vertex);
+            InitializeComponent();
 
-            normal = maths.normalizar(normal);
-            lightDirection = maths.normalizar(lightDirection);
+            for (int i = 0; i < zBuffer.GetLength(0); i++)
+            {
+                for (int j = 0; j < zBuffer.GetLength(1); j++)
+                {
+                    zBuffer[i, j] = int.MinValue;
+                }
+            }
 
-            return Math.Max(0, maths.produtoEscalar(normal, lightDirection));
+            LoadFile("vaso");
+
+            for (var i = 0; i < triangulos.Count; i++)
+            {
+                Triangle t = new Triangle();
+                t.verticesIndex = new int[3] { triangulos[i][0] - 1, triangulos[i][1] - 1, triangulos[i][2] - 1 };
+
+                t.vertices = new List<Point>();
+                t.vertices.Add(new Point(vertices[t.verticesIndex[0]][0], vertices[t.verticesIndex[0]][1], vertices[t.verticesIndex[0]][2]));
+                t.vertices.Add(new Point(vertices[t.verticesIndex[1]][0], vertices[t.verticesIndex[1]][1], vertices[t.verticesIndex[1]][2]));
+                t.vertices.Add(new Point(vertices[t.verticesIndex[2]][0], vertices[t.verticesIndex[2]][1], vertices[t.verticesIndex[2]][2]));
+                
+                List<Point> coordenadasVista = new List<Point>();
+
+                for (var j = 0; j < 3; j++)
+                {
+                    double[,] vista = coordenadaVista(new Point(t.vertices[j].x, t.vertices[j].y, t.vertices[j].z));
+                    coordenadasVista.Add(new Point(vista[0, 0], vista[1, 0], vista[2, 0]));
+                }
+
+                t.coordenadaVista = coordenadasVista;
+
+                Point V = maths.subtracaoPontos(coordenadasVista[1], coordenadasVista[0]);
+                Point W = maths.subtracaoPontos(coordenadasVista[2], coordenadasVista[0]);
+                Point normalTriangulo = maths.normalizar(maths.produtoVetorial(V, W));
+
+                t.normal = normalTriangulo;
+                
+                double x = t.vertices[0].x + t.vertices[1].x + t.vertices[2].x;
+                double y = t.vertices[0].y + t.vertices[1].y + t.vertices[2].y;
+                double z = t.vertices[0].z + t.vertices[1].z + t.vertices[2].z;
+                
+                t.baricentro = new Point(x / 3, y / 3, z / 3);
+
+                triangles.Add(t);
+            }
+
+            Point[] verticeNormal = new Point[vertices.Count];
+
+            for (int i = 0; i < verticeNormal.Length; i++)
+            {
+                verticeNormal[i] = new Point(0, 0, 0);
+            }
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                verticeNormal[triangles[i].verticesIndex[0]].x += triangles[i].normal.x;
+                verticeNormal[triangles[i].verticesIndex[0]].y += triangles[i].normal.y;
+                verticeNormal[triangles[i].verticesIndex[0]].z += triangles[i].normal.z;
+
+                verticeNormal[triangles[i].verticesIndex[1]].x += triangles[i].normal.x;
+                verticeNormal[triangles[i].verticesIndex[1]].y += triangles[i].normal.y;
+                verticeNormal[triangles[i].verticesIndex[1]].z += triangles[i].normal.z;
+
+                verticeNormal[triangles[i].verticesIndex[2]].x += triangles[i].normal.x;
+                verticeNormal[triangles[i].verticesIndex[2]].y += triangles[i].normal.y;
+                verticeNormal[triangles[i].verticesIndex[2]].z += triangles[i].normal.z;
+            }
+
+            for (int i = 0; i < verticeNormal.Length; i++)
+            {
+                verticeNormal[i] = maths.normalizar(verticeNormal[i]);
+            }
+
+            triangles = triangles.OrderBy(p => p.baricentro.z).ToList();
+            triangles.Reverse();
+                                           
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                triangles[i].normaisVertices = new List<Point>();
+                triangles[i].normaisVertices.Add(verticeNormal[triangles[i].verticesIndex[0]]);
+                triangles[i].normaisVertices.Add(verticeNormal[triangles[i].verticesIndex[1]]);
+                triangles[i].normaisVertices.Add(verticeNormal[triangles[i].verticesIndex[2]]);
+                
+                List<Point> verticeTela = new List<Point>();
+
+                for (var j = 0; j < 3; j++)
+                {
+                    double Xs = (camera.d / camera.hX) * (triangles[i].coordenadaVista[j].x / triangles[i].coordenadaVista[j].z);
+                    double Ys = (camera.d / camera.hY) * (triangles[i].coordenadaVista[j].y / triangles[i].coordenadaVista[j].z);
+
+                    double I = Math.Floor((((Xs + 1) / 2) * WIDTH) + 0.5);
+                    double J = Math.Floor((HEIGHT - ((Ys + 1) / 2) * HEIGHT) + 0.5);
+
+                    verticeTela.Add(new Point(I, J, 0));
+                }
+
+                if (verticeTela[0].y > verticeTela[1].y) verticeTela = swap(verticeTela, 0, 1);
+                if (verticeTela[0].y > verticeTela[2].y) verticeTela = swap(verticeTela, 0, 2);
+                if (verticeTela[1].y > verticeTela[2].y) verticeTela = swap(verticeTela, 1, 2);
+
+                triangles[i].coordenadaTela = verticeTela;
+
+                Point baricentro = new Point(
+                    (verticeTela[0].x + verticeTela[1].x + verticeTela[2].x) / 3,
+                    (verticeTela[0].y + verticeTela[1].y + verticeTela[2].y) / 3,
+                    (verticeTela[0].z + verticeTela[1].z + verticeTela[2].z) / 3);
+
+                double z = triangles[i].baricentro.z;
+
+                if ((int)verticeTela[1].y == (int)verticeTela[2].y)
+                {
+                    drawTopBottom(triangles[i], 0, 1, 2, z);
+                }
+                else if ((int)verticeTela[0].y == (int)verticeTela[1].y)
+                {
+                    drawBottomTop(triangles[i], 0, 1, 2, z);
+                }
+                else
+                {
+                    var v4x = (verticeTela[0].x + ((verticeTela[1].y - verticeTela[0].y) / (verticeTela[2].y - verticeTela[0].y)) * (verticeTela[2].x - verticeTela[0].x));
+                    verticeTela.Add(new Point(v4x, verticeTela[1].y, 0));
+                    
+                    drawTopBottom(triangles[i], 0, 1, 3, z);
+                    drawBottomTop(triangles[i], 1, 3, 2, z);
+                }
+            }
+
+            DrawPixels();
         }
-
-        private void drawTopBottom (List<Point> triV, int idx1, int idx2, int idx3, Color color, int z)
+        
+        private void drawTopBottom (Triangle triangle, int idx1, int idx2, int idx3, double z)
         {
-            Point v1 = triV[idx1];
-            Point v2 = triV[idx2];
-            Point v3 = triV[idx3];
+            Point v1 = triangle.coordenadaTela[idx1];
+            Point v2 = triangle.coordenadaTela[idx2];
+            Point v3 = triangle.coordenadaTela[idx3];
             
             double invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
             double invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
-
-            if (invslope1 > 20)
-                invslope1 = invslope2;
-
-            double x1 = v1.x;
-            double x2 = v1.x + 0.5;
             
-            for (var scanlineY = (int)v1.y; scanlineY <= v2.y; scanlineY++)
+            double x1 = v1.x;
+            double x2 = v1.x;
+            
+            for (var y = (int)v1.y; y <= v2.y; y++)
             {
                 var xMin = x1 < x2 ? x1 : x2;
                 var xMax = x1 > x2 ? x1 : x2;
 
-                for (int k = (int)xMin; k < xMax; k++)
+                for (int x = (int)xMin; x <= xMax; x++)
                 {
-                    AddPixel(k, scanlineY, color, z);
+                    AddPixel(x, y, calcularCor(triangle, x, y, v1, v2, v3), z);
                 }
+
                 x1 += invslope1;
                 x2 += invslope2;
             }
         }
 
-        private void drawBottomTop(List<Point> triV, int idx1, int idx2, int idx3, Color color, int z)
+        private void drawBottomTop(Triangle triangle, int idx1, int idx2, int idx3, double z)
         {
-            Point v1 = triV[idx1];
-            Point v2 = triV[idx2];
-            Point v3 = triV[idx3];
+            Point v1 = triangle.coordenadaTela[idx1];
+            Point v2 = triangle.coordenadaTela[idx2];
+            Point v3 = triangle.coordenadaTela[idx3];
 
             double invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
             double invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
             
             double x1 = v3.x;
-            double x2 = v3.x + 0.5;
+            double x2 = v3.x;
             
-            for (int j = (int)v3.y; j > v1.y; j--)
+            for (int y = (int)v3.y; y >= v1.y; y--)
             {
                 var xMin = x1 < x2 ? x1 : x2;
                 var xMax = x1 > x2 ? x1 : x2;
-                for (int k = (int)xMin; k < xMax; k++)
+
+                for (int x = (int)xMin; x <= xMax; x++)
                 {
-                    AddPixel(k, j, color, z);
+                    AddPixel(x, y, calcularCor(triangle, x, y, v1, v2, v3), z);
                 }
+
                 x1 -= invslope1;
                 x2 -= invslope2;
             }
+        }
+        
+        private Color calcularCor(Triangle triangle, int i, int j, Point p1, Point p2, Point p3)
+        {
+            double[,] bar = maths.coordenadasBaricentricas(new Point(i, j, 0), p1, p2, p3);
+
+            var alpha = bar[0, 0];
+            var beta = bar[0, 1];
+            var gama = bar[0, 2];
+
+            Point P = new Point(
+                alpha * vertices[triangle.verticesIndex[0]][0] + beta * vertices[triangle.verticesIndex[1]][0] + gama * vertices[triangle.verticesIndex[2]][0],
+                alpha * vertices[triangle.verticesIndex[0]][1] + beta * vertices[triangle.verticesIndex[1]][1] + gama * vertices[triangle.verticesIndex[2]][1],
+                alpha * vertices[triangle.verticesIndex[0]][2] + beta * vertices[triangle.verticesIndex[1]][2] + gama * vertices[triangle.verticesIndex[2]][2]
+            );
+
+            Point N = new Point(
+                alpha * triangle.normaisVertices[0].x + beta * triangle.normaisVertices[1].x + gama * triangle.normaisVertices[2].x,
+                alpha * triangle.normaisVertices[0].y + beta * triangle.normaisVertices[1].y + gama * triangle.normaisVertices[2].y,
+                alpha * triangle.normaisVertices[0].z + beta * triangle.normaisVertices[1].z + gama * triangle.normaisVertices[2].z
+            );
+
+            Point L = maths.subtracaoPontos(luz.Pl, P);
+
+            N = maths.normalizar(N);
+            L = maths.normalizar(L);
+
+            double NxL = maths.produtoEscalar(N, L);
+
+            Point R = new Point(2 * NxL * N.x - L.x, 2 * NxL * N.y - L.y, 2 * NxL * N.z - L.z);
+            Point V = new Point(-P.x, -P.y, -P.z);
+
+            V = maths.normalizar(V);
+
+            double RxV = maths.produtoEscalar(R, V);
+            double RxV2 = RxV * RxV;
+
+            if (NxL < 0)
+            {
+                if (maths.produtoEscalar(V, N) < 0)
+                {
+                    N = new Point(-N.x, -N.y, -N.z);
+                    NxL = maths.produtoEscalar(N, L);
+
+                    R = new Point(2 * NxL * N.x - L.x, 2 * NxL * N.y - L.y, 2 * NxL * N.z - L.z);
+                }
+                else
+                {
+                    NxL = 0;
+                    RxV2 = 0;
+                }
+            }
+
+            if (maths.produtoEscalar(V, R) < 0)
+            {
+                RxV2 = 0;
+            }
+
+            C Ia = new C(
+                (int)(luz.Ka * luz.Iamb.R),
+                (int)(luz.Ka * luz.Iamb.G),
+                (int)(luz.Ka * luz.Iamb.B));
+
+            C Id = new C(
+                (int)(NxL * luz.Kd.x * luz.Od.x * luz.Il.R),
+                (int)(NxL * luz.Kd.y * luz.Od.y * luz.Il.G),
+                (int)(NxL * luz.Kd.z * luz.Od.z * luz.Il.B));
+
+            C Is = new C(
+                (int)(RxV2 * luz.Ks * luz.Il.R),
+                (int)(RxV2 * luz.Ks * luz.Il.G),
+                (int)(RxV2 * luz.Ks * luz.Il.B));
+
+            C color = new C(
+                Ia.R + Id.R + Is.R,
+                Ia.G + Id.G + Is.G,
+                Ia.B + Id.B + Is.B);
+            
+            color.R = color.R > 255 ? 255 : color.R;
+            color.G = color.G > 255 ? 255 : color.G;
+            color.B = color.B > 255 ? 255 : color.B;
+
+            Color I = Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
+
+            return I;
         }
 
         private List<Point> swap(List<Point> array, int i, int j)
@@ -386,17 +474,17 @@ namespace ComputacaoGrafica
             });
         }
         
-        private void AddPixel(double x, double y, Color color, int z)
+        private void AddPixel(double x, double y, Color color, double z)
         {
             if (zBuffer[(int)x, (int)y] < z)
             {
-                pixels[(int)y, (int)x, 0] = color.B; 
-                pixels[(int)y, (int)x, 1] = color.G; 
-                pixels[(int)y, (int)x, 2] = color.R; 
+                pixels[(int)y, (int)x, 0] = color.B;
+                pixels[(int)y, (int)x, 1] = color.G;
+                pixels[(int)y, (int)x, 2] = color.R;
                 pixels[(int)y, (int)x, 3] = 255;
-            }
 
-            zBuffer[(int)x, (int)y] = z;
+                zBuffer[(int)x, (int)y] = z;
+            }
         }
     }
 }

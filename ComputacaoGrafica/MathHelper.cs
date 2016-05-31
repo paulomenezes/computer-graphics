@@ -59,6 +59,11 @@ namespace ComputacaoGrafica
             return resultado;
         }
 
+        public Point multiplicar(double escalar, Point ponto1)
+        {
+            return new Point(escalar * ponto1.x, escalar * ponto1.y, escalar * ponto1.z);
+        }
+
         public Point subtracaoPontos(Point ponto1, Point ponto2)
         {
             return new Point(ponto2.x - ponto1.x, ponto2.y - ponto1.y, ponto2.z - ponto1.z);
