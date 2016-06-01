@@ -45,7 +45,7 @@ namespace ComputacaoGrafica
         public int n = 5;
         public Point Kd = new Point(0.5f, 0, 0);
         public Point Od = new Point(0.5f, 0, 0);
-        public Point Pl = new Point(0, 0, -500);
+        public Point Pl = new Point(0, -0, -500);
     }
 
     struct C
@@ -163,7 +163,7 @@ namespace ComputacaoGrafica
             {
                 for (int j = 0; j < zBuffer.GetLength(1); j++)
                 {
-                    zBuffer[i, j] = int.MinValue;
+                    zBuffer[i, j] = int.MaxValue;
                 }
             }
 
@@ -189,11 +189,10 @@ namespace ComputacaoGrafica
 
                 t.coordenadaVista = coordenadasVista;
 
-                Point V = maths.subtracaoPontos(coordenadasVista[1], coordenadasVista[0]);
-                Point W = maths.subtracaoPontos(coordenadasVista[2], coordenadasVista[0]);
-                Point normalTriangulo = maths.normalizar(maths.produtoVetorial(V, W));
-
-                t.normal = normalTriangulo;
+                Point V = maths.subtracaoPontos(coordenadasVista[0], coordenadasVista[1]);
+                Point W = maths.subtracaoPontos(coordenadasVista[0], coordenadasVista[2]);
+                
+                t.normal = maths.normalizar(maths.produtoVetorial(V, W));
                 
                 double x = t.vertices[0].x + t.vertices[1].x + t.vertices[2].x;
                 double y = t.vertices[0].y + t.vertices[1].y + t.vertices[2].y;
@@ -259,36 +258,29 @@ namespace ComputacaoGrafica
                 if (verticeTela[1].y > verticeTela[2].y) verticeTela = swap(verticeTela, 1, 2);
 
                 triangles[i].coordenadaTela = verticeTela;
-
-                Point baricentro = new Point(
-                    (verticeTela[0].x + verticeTela[1].x + verticeTela[2].x) / 3,
-                    (verticeTela[0].y + verticeTela[1].y + verticeTela[2].y) / 3,
-                    (verticeTela[0].z + verticeTela[1].z + verticeTela[2].z) / 3);
-
-                double z = triangles[i].baricentro.z;
-
+                
                 if ((int)verticeTela[1].y == (int)verticeTela[2].y)
                 {
-                    drawTopBottom(triangles[i], 0, 1, 2, z);
+                    drawTopBottom(triangles[i], 0, 1, 2);
                 }
                 else if ((int)verticeTela[0].y == (int)verticeTela[1].y)
                 {
-                    drawBottomTop(triangles[i], 0, 1, 2, z);
+                    drawBottomTop(triangles[i], 0, 1, 2);
                 }
                 else
                 {
                     var v4x = (verticeTela[0].x + ((verticeTela[1].y - verticeTela[0].y) / (verticeTela[2].y - verticeTela[0].y)) * (verticeTela[2].x - verticeTela[0].x));
                     verticeTela.Add(new Point(v4x, verticeTela[1].y, 0));
                     
-                    drawTopBottom(triangles[i], 0, 1, 3, z);
-                    drawBottomTop(triangles[i], 1, 3, 2, z);
+                    drawTopBottom(triangles[i], 0, 1, 3);
+                    drawBottomTop(triangles[i], 1, 3, 2);
                 }
             }
 
             DrawPixels();
         }
         
-        private void drawTopBottom (Triangle triangle, int idx1, int idx2, int idx3, double z)
+        private void drawTopBottom (Triangle triangle, int idx1, int idx2, int idx3)
         {
             Point v1 = triangle.coordenadaTela[idx1];
             Point v2 = triangle.coordenadaTela[idx2];
@@ -308,9 +300,13 @@ namespace ComputacaoGrafica
                 for (int x = (int)xMin; x <= xMax; x++)
                 {
                     Point[] PN = originalPoint(triangle, x, y, v1, v2, v3);
-                    Color I = calcularCor(triangle, PN[0], PN[1]);
 
-                    AddPixel(x, y, I, PN[0].z);
+                    if (PN != null && PN[0].z <= zBuffer[x, y])
+                    {
+                        Color I = calcularCor(triangle, PN[0], PN[1]);
+
+                        AddPixel(x, y, I, PN[0].z);
+                    }
                 }
 
                 x1 += invslope1;
@@ -318,7 +314,7 @@ namespace ComputacaoGrafica
             }
         }
 
-        private void drawBottomTop(Triangle triangle, int idx1, int idx2, int idx3, double z)
+        private void drawBottomTop(Triangle triangle, int idx1, int idx2, int idx3)
         {
             Point v1 = triangle.coordenadaTela[idx1];
             Point v2 = triangle.coordenadaTela[idx2];
@@ -338,9 +334,13 @@ namespace ComputacaoGrafica
                 for (int x = (int)xMin; x <= xMax; x++)
                 {
                     Point[] PN = originalPoint(triangle, x, y, v1, v2, v3);
-                    Color I = calcularCor(triangle, PN[0], PN[1]);
 
-                    AddPixel(x, y, I, PN[0].z);
+                    if (PN != null && PN[0].z <= zBuffer[x, y])
+                    {
+                        Color I = calcularCor(triangle, PN[0], PN[1]);
+
+                        AddPixel(x, y, I, PN[0].z);
+                    }
                 }
 
                 x1 -= invslope1;
@@ -356,10 +356,16 @@ namespace ComputacaoGrafica
             var beta = bar[0, 1];
             var gama = bar[0, 2];
 
-            Point P = new Point(
+            Point P2 = new Point(
                 alpha * vertices[triangle.verticesIndex[0]][0] + beta * vertices[triangle.verticesIndex[1]][0] + gama * vertices[triangle.verticesIndex[2]][0],
                 alpha * vertices[triangle.verticesIndex[0]][1] + beta * vertices[triangle.verticesIndex[1]][1] + gama * vertices[triangle.verticesIndex[2]][1],
                 alpha * vertices[triangle.verticesIndex[0]][2] + beta * vertices[triangle.verticesIndex[1]][2] + gama * vertices[triangle.verticesIndex[2]][2]
+            );
+
+            Point P = new Point(
+                alpha * triangle.coordenadaVista[0].x + beta * triangle.coordenadaVista[1].x + gama * triangle.coordenadaVista[2].x,
+                alpha * triangle.coordenadaVista[0].y + beta * triangle.coordenadaVista[1].y + gama * triangle.coordenadaVista[2].y,
+                alpha * triangle.coordenadaVista[0].z + beta * triangle.coordenadaVista[1].z + gama * triangle.coordenadaVista[2].z
             );
 
             Point N = new Point(
@@ -368,12 +374,22 @@ namespace ComputacaoGrafica
                 alpha * triangle.normaisVertices[0].z + beta * triangle.normaisVertices[1].z + gama * triangle.normaisVertices[2].z
             );
 
+            Point V = maths.subtracaoPontos(p2, p1);
+            Point W = maths.subtracaoPontos(p3, p1);
+
+            double windingOrder = maths.produtoEscalar(V, W);
+            if (windingOrder != 0)
+            {
+                return null;
+                N = new Point(-N.x, -N.y, -N.z);
+            }
+
             return new Point[2] { P, N };
         }
         
         private Color calcularCor(Triangle triangle, Point P, Point N)
         {
-            Point L = maths.subtracaoPontos(luz.Pl, P);
+            Point L = maths.subtracaoPontos(P, luz.Pl);
 
             N = maths.normalizar(N);
             L = maths.normalizar(L);
@@ -386,7 +402,7 @@ namespace ComputacaoGrafica
             V = maths.normalizar(V);
 
             double RxV = maths.produtoEscalar(R, V);
-            double RxV2 = RxV * RxV;
+            double RxV2 = Math.Pow(RxV, luz.n);
 
             if (NxL < 0)
             {
@@ -398,7 +414,7 @@ namespace ComputacaoGrafica
                     R = new Point(2 * NxL * N.x - L.x, 2 * NxL * N.y - L.y, 2 * NxL * N.z - L.z);
 
                     RxV = maths.produtoEscalar(R, V);
-                    RxV2 = RxV * RxV;
+                    RxV2 = Math.Pow(RxV, luz.n);
                 }
                 else
                 {
@@ -436,7 +452,9 @@ namespace ComputacaoGrafica
             color.G = color.G > 255 ? 255 : color.G;
             color.B = color.B > 255 ? 255 : color.B;
 
-            return Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
+            Color I = Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
+
+            return I;
         }
 
         private List<Point> swap(List<Point> array, int i, int j)
@@ -483,17 +501,14 @@ namespace ComputacaoGrafica
             });
         }
         
-        private void AddPixel(double x, double y, Color color, double z)
+        private void AddPixel(int x, int y, Color color, double z)
         {
-            if (zBuffer[(int)x, (int)y] < z)
-            {
-                pixels[(int)y, (int)x, 0] = color.B;
-                pixels[(int)y, (int)x, 1] = color.G;
-                pixels[(int)y, (int)x, 2] = color.R;
-                pixels[(int)y, (int)x, 3] = 255;
+            pixels[y, x, 0] = color.B;
+            pixels[y, x, 1] = color.G;
+            pixels[y, x, 2] = color.R;
+            pixels[y, x, 3] = 255;
 
-                zBuffer[(int)x, (int)y] = z;
-            }
+            zBuffer[x, y] = z;
         }
     }
 }
