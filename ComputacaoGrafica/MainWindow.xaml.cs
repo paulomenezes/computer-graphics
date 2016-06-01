@@ -45,7 +45,7 @@ namespace ComputacaoGrafica
         public int n = 5;
         public Point Kd = new Point(0.5f, 0, 0);
         public Point Od = new Point(0.5f, 0, 0);
-        public Point Pl = new Point(-100, 0, -500);
+        public Point Pl = new Point(0, 0, -500);
     }
 
     struct C
@@ -71,10 +71,7 @@ namespace ComputacaoGrafica
 
         public int[] verticesIndex;
     }
-
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
+    
     public partial class MainWindow : Window
     {
         MathHelper maths = new MathHelper();
@@ -170,7 +167,7 @@ namespace ComputacaoGrafica
                 }
             }
 
-            LoadFile("vaso");
+            LoadFile("calice2");
 
             for (var i = 0; i < triangulos.Count; i++)
             {
@@ -310,7 +307,10 @@ namespace ComputacaoGrafica
 
                 for (int x = (int)xMin; x <= xMax; x++)
                 {
-                    AddPixel(x, y, calcularCor(triangle, x, y, v1, v2, v3), z);
+                    Point[] PN = originalPoint(triangle, x, y, v1, v2, v3);
+                    Color I = calcularCor(triangle, PN[0], PN[1]);
+
+                    AddPixel(x, y, I, PN[0].z);
                 }
 
                 x1 += invslope1;
@@ -337,15 +337,18 @@ namespace ComputacaoGrafica
 
                 for (int x = (int)xMin; x <= xMax; x++)
                 {
-                    AddPixel(x, y, calcularCor(triangle, x, y, v1, v2, v3), z);
+                    Point[] PN = originalPoint(triangle, x, y, v1, v2, v3);
+                    Color I = calcularCor(triangle, PN[0], PN[1]);
+
+                    AddPixel(x, y, I, PN[0].z);
                 }
 
                 x1 -= invslope1;
                 x2 -= invslope2;
             }
         }
-        
-        private Color calcularCor(Triangle triangle, int i, int j, Point p1, Point p2, Point p3)
+
+        private Point[] originalPoint(Triangle triangle, int i, int j, Point p1, Point p2, Point p3)
         {
             double[,] bar = maths.coordenadasBaricentricas(new Point(i, j, 0), p1, p2, p3);
 
@@ -365,6 +368,11 @@ namespace ComputacaoGrafica
                 alpha * triangle.normaisVertices[0].z + beta * triangle.normaisVertices[1].z + gama * triangle.normaisVertices[2].z
             );
 
+            return new Point[2] { P, N };
+        }
+        
+        private Color calcularCor(Triangle triangle, Point P, Point N)
+        {
             Point L = maths.subtracaoPontos(luz.Pl, P);
 
             N = maths.normalizar(N);
@@ -388,6 +396,9 @@ namespace ComputacaoGrafica
                     NxL = maths.produtoEscalar(N, L);
 
                     R = new Point(2 * NxL * N.x - L.x, 2 * NxL * N.y - L.y, 2 * NxL * N.z - L.z);
+
+                    RxV = maths.produtoEscalar(R, V);
+                    RxV2 = RxV * RxV;
                 }
                 else
                 {
@@ -425,9 +436,7 @@ namespace ComputacaoGrafica
             color.G = color.G > 255 ? 255 : color.G;
             color.B = color.B > 255 ? 255 : color.B;
 
-            Color I = Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
-
-            return I;
+            return Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
         }
 
         private List<Point> swap(List<Point> array, int i, int j)
