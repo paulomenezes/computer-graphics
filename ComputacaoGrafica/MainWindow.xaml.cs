@@ -1,18 +1,12 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace ComputacaoGrafica
 {
@@ -35,7 +29,7 @@ namespace ComputacaoGrafica
         public int n = 5;
         public Point Kd = new Point(0.5f, 0, 0);
         public Point Od = new Point(0.5f, 0, 0);
-        public Point Pl = new Point(0, -0, -500);
+        public Point Pl = new Point(0, 0, -500);
     }
 
     struct Cor
@@ -84,9 +78,11 @@ namespace ComputacaoGrafica
 
         List<Triangle> triangles = new List<Triangle>();
 
+        string filename = "";
+
         private void LoadFile(string name)
         {
-            String file = File.ReadAllText(name + ".byu");
+            String file = File.ReadAllText(name);
 
             string[] data = file.Split(new string[2] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
             var vLen = data[0].Split(' ')[0];
@@ -146,20 +142,86 @@ namespace ComputacaoGrafica
             //Set the Image source.
             image.Source = wbitmap;
         }
+        
+        private void Open_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog dialog = new OpenFileDialog();
+            if (dialog.ShowDialog() == true)
+            {
+                filename = dialog.FileName;
+                Init(dialog.FileName);
+            }
+        }
+
+        private void Refresh_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                camera.C = new Point(Cx.Text, Cy.Text, Cz.Text);
+                camera.N = new Point(Nx.Text, Ny.Text, Nz.Text);
+                camera.d = Convert.ToInt32(D.Text);
+                camera.hX = Convert.ToInt32(Hx.Text);
+                camera.hY = Convert.ToInt32(hY.Text);
+
+                luz.Iamb = Color.FromRgb((byte)(Convert.ToInt32(iambR.Text)), (byte)(Convert.ToInt32(iambG.Text)), (byte)(Convert.ToInt32(iambB.Text)));
+                luz.Il = Color.FromRgb((byte)Convert.ToInt32(ilR.Text), (byte)Convert.ToInt32(ilG.Text), (byte)Convert.ToInt32(ilB.Text));
+                luz.Ka = Convert.ToDouble(Ka.Text);
+                luz.Ks = Convert.ToDouble(Ks.Text);
+                luz.n = Convert.ToInt32(n.Text);
+                luz.Kd = new Point(kdX.Text, kdY.Text, kdZ.Text);
+                luz.Od = new Point(odX.Text, odY.Text, odZ.Text);
+                luz.Pl = new Point(plX.Text, plY.Text, plZ.Text);
+
+                if (filename.Length > 0)
+                {
+                    Init(filename);
+                } 
+                else
+                {
+                    MessageBox.Show("Selecione um arquivo.");
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Parâmetros inválidos");
+            }
+        }
 
         public MainWindow()
         {
             InitializeComponent();
+
+            Init("../../objetos/calice2.byu");
+        }
+
+        private void Init(String name)
+        {
+            triangles.Clear();
+            vertices.Clear();
+            verticesVista.Clear();
+            triangulos.Clear();
+
+            for (int row = 0; row < HEIGHT; row++)
+            {
+                for (int col = 0; col < WIDTH; col++)
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        pixels[row, col, i] = 0;
+                    }
+                }
+            }
 
             for (int i = 0; i < zBuffer.GetLength(0); i++)
             {
                 for (int j = 0; j < zBuffer.GetLength(1); j++)
                 {
                     zBuffer[i, j] = int.MaxValue;
+
                 }
             }
 
-            LoadFile("calice2");
+            LoadFile(name);
 
             for (var i = 0; i < vertices.Count; i++)
             {

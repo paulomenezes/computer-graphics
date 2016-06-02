@@ -30,6 +30,13 @@ namespace ComputacaoGrafica
             this.z = z;
         }
 
+        public Point(string x, string y, string z)
+        {
+            this.x = Convert.ToDouble(x);
+            this.y = Convert.ToDouble(y);
+            this.z = Convert.ToDouble(z);
+        }
+
         public override string ToString()
         {
             return "(" + x + ", " + y + ", " + z + ")";
